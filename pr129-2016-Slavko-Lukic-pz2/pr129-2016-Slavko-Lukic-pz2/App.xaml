@@ -1,0 +1,9 @@
+﻿<Application x:Class="pr129_2016_Slavko_Lukic_pz2.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:pr129_2016_Slavko_Lukic_pz2"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+         
+    </Application.Resources>
+</Application>
