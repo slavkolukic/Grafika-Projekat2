@@ -15,6 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Xml;
+using Point = pr129_2016_Slavko_Lukic_pz2.Model.Point;
 
 namespace pr129_2016_Slavko_Lukic_pz2
 {
@@ -50,6 +51,9 @@ namespace pr129_2016_Slavko_Lukic_pz2
 
         private Dictionary<long, PowerEntity> allPowerEntities = new Dictionary<long, PowerEntity>();
 
+        private List<Line> lns = new List<Line>();
+        private List<Point> pts = new List<Point>();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -66,6 +70,202 @@ namespace pr129_2016_Slavko_Lukic_pz2
 
             ParseLines();
             DrawAllLines();
+
+            foreach (var a in lns)
+            {
+                foreach (var b in lns)
+                {
+                    Point ix = FindIntersection(a, b);
+                    //Point ix = FindLineIntersection(a, b);
+                    if (ix != null)
+                        pts.Add(ix);
+                }
+            }
+
+            foreach (var a in pts)
+            {
+                double yOffset = 800 / y;
+                double xOffset = 1000 / x;
+
+                Rectangle e = new Rectangle();
+                e.Width = 1;
+                e.Height = 1;
+                e.Fill = new SolidColorBrush(Colors.YellowGreen);
+
+                Canvas.SetLeft(e, a.X - 0.5);
+                Canvas.SetTop(e, a.Y - 0.5);
+
+                canvas.Children.Add(e);
+            }
+        }
+
+        private Point FindLineIntersection(Line lineA, Line lineB)
+        {
+            if (lineA == lineB)
+                return null;
+
+            Point retVal = new Point();
+
+            Point P1 = new Point();
+            Point Q1 = new Point();
+
+            P1.X = lineA.X1;
+            P1.Y = lineA.Y1;
+
+            Q1.X = lineA.X2;
+            Q1.Y = lineA.Y2;
+
+            double a1 = Q1.Y - P1.Y;
+            double b1 = P1.X - Q1.X;
+            double c1 = a1 * (P1.X) + b1 * (P1.Y);
+
+            Point P2 = new Point();
+            Point Q2 = new Point();
+
+            P2.X = lineB.X1;
+            P2.Y = lineB.Y1;
+
+            Q2.X = lineB.X2;
+            Q2.Y = lineB.Y2;
+
+            double a2 = Q2.Y - P2.Y;
+            double b2 = P2.X - Q2.X;
+            double c2 = a2 * (P2.X) + b2 * (P2.Y);
+
+            double delta = a1 * b2 - a2 * b1;
+
+            if (delta == 0)
+                return null;
+
+            double xx = (b2 * c1 - b1 * c2) / delta;
+            double yy = (a1 * c2 - a2 * c1) / delta;
+
+            retVal.X = xx;
+            retVal.Y = yy;
+
+            return retVal;
+        }
+
+        private static Point FindIntersection(Line lineA, Line lineB, double tolerance = 0.001)
+        {
+            double x1 = lineA.X1, y1 = lineA.Y1;
+            double x2 = lineA.X2, y2 = lineA.Y2;
+
+            double x3 = lineB.X1, y3 = lineB.Y1;
+            double x4 = lineB.X2, y4 = lineB.Y2;
+
+            // equations of the form x = c (two vertical lines)
+            if (Math.Abs(x1 - x2) < tolerance && Math.Abs(x3 - x4) < tolerance && Math.Abs(x1 - x3) < tolerance)
+            {
+                return default(Point);
+            }
+
+            //equations of the form y=c (two horizontal lines)
+            if (Math.Abs(y1 - y2) < tolerance && Math.Abs(y3 - y4) < tolerance && Math.Abs(y1 - y3) < tolerance)
+            {
+                return default(Point);
+            }
+
+            //equations of the form x=c (two vertical lines)
+            if (Math.Abs(x1 - x2) < tolerance && Math.Abs(x3 - x4) < tolerance)
+            {
+                return default(Point);
+            }
+
+            //equations of the form y=c (two horizontal lines)
+            if (Math.Abs(y1 - y2) < tolerance && Math.Abs(y3 - y4) < tolerance)
+            {
+                return default(Point);
+            }
+
+            //general equation of line is y = mx + c where m is the slope
+            //assume equation of line 1 as y1 = m1x1 + c1
+            //=> -m1x1 + y1 = c1 ----(1)
+            //assume equation of line 2 as y2 = m2x2 + c2
+            //=> -m2x2 + y2 = c2 -----(2)
+            //if line 1 and 2 intersect then x1=x2=x & y1=y2=y where (x,y) is the intersection point
+            //so we will get below two equations
+            //-m1x + y = c1 --------(3)
+            //-m2x + y = c2 --------(4)
+            double x, y;
+
+            //lineA is vertical x1 = x2
+            //slope will be infinity
+            //so lets derive another solution
+            if (Math.Abs(x1 - x2) < tolerance)
+            {
+                //compute slope of line 2 (m2) and c2
+                double m2 = (y4 - y3) / (x4 - x3);
+                double c2 = -m2 * x3 + y3;
+
+                //equation of vertical line is x = c
+                //if line 1 and 2 intersect then x1=c1=x
+                //subsitute x=x1 in (4) => -m2x1 + y = c2
+                // => y = c2 + m2x1
+                x = x1;
+                y = c2 + m2 * x1;
+            }
+            //lineB is vertical x3 = x4
+            //slope will be infinity
+            //so lets derive another solution
+            else if (Math.Abs(x3 - x4) < tolerance)
+            {
+                //compute slope of line 1 (m1) and c2
+                double m1 = (y2 - y1) / (x2 - x1);
+                double c1 = -m1 * x1 + y1;
+
+                //equation of vertical line is x = c
+                //if line 1 and 2 intersect then x3=c3=x
+                //subsitute x=x3 in (3) => -m1x3 + y = c1
+                // => y = c1 + m1x3
+                x = x3;
+                y = c1 + m1 * x3;
+            }
+            //lineA & lineB are not vertical
+            //(could be horizontal we can handle it with slope = 0)
+            else
+            {
+                //compute slope of line 1 (m1) and c2
+                double m1 = (y2 - y1) / (x2 - x1);
+                double c1 = -m1 * x1 + y1;
+
+                //compute slope of line 2 (m2) and c2
+                double m2 = (y4 - y3) / (x4 - x3);
+                double c2 = -m2 * x3 + y3;
+
+                //solving equations (3) & (4) => x = (c1-c2)/(m2-m1)
+                //plugging x value in equation (4) => y = c2 + m2 * x
+                x = (c1 - c2) / (m2 - m1);
+                y = c2 + m2 * x;
+
+                //verify by plugging intersection point (x, y)
+                //in orginal equations (1) & (2) to see if they intersect
+                //otherwise x,y values will not be finite and will fail this check
+                if (!(Math.Abs(-m1 * x + y - c1) < tolerance
+                    && Math.Abs(-m2 * x + y - c2) < tolerance))
+                {
+                    return default(Point);
+                }
+            }
+
+            //x,y can intersect outside the line segment since line is infinitely long
+            //so finally check if x, y is within both the line segments
+            if (IsInsideLine(lineA, x, y) &&
+                IsInsideLine(lineB, x, y))
+            {
+                return new Point { X = x, Y = y };
+            }
+
+            //return default null (no intersection)
+            return default(Point);
+        }
+
+        private static bool IsInsideLine(Line line, double x, double y)
+        {
+            return (x >= line.X1 && x <= line.X2
+                        || x >= line.X2 && x <= line.X1)
+                   && (y >= line.Y1 && y <= line.Y2
+                        || y >= line.Y2 && y <= line.Y1);
         }
 
         private void DrawAllLines()
@@ -110,6 +310,7 @@ namespace pr129_2016_Slavko_Lukic_pz2
                 line1.Tag = ttp;
                 line1.MouseRightButtonDown += line_MouseRightButtonDown;
                 canvas.Children.Add(line1);
+                lns.Add(line1);
 
                 Line line2 = new Line();
                 line2.StrokeThickness = 1;
@@ -121,6 +322,7 @@ namespace pr129_2016_Slavko_Lukic_pz2
                 line2.Tag = ttp;
                 line2.MouseRightButtonDown += line_MouseRightButtonDown;
                 canvas.Children.Add(line2);
+                lns.Add(line2);
             }
         }
 
