@@ -36,15 +36,19 @@ namespace pr129_2016_Slavko_Lukic_pz2
         private static XmlNodeList substationNodeList;
         private static XmlNodeList switchNodeList;
         private static XmlNodeList nodeNodeList;
+        private static XmlNodeList lineNodeList;
 
         private List<SubstationEntity> allSubstations = new List<SubstationEntity>();
         private List<SwitchEntity> allSwitches = new List<SwitchEntity>();
         private List<NodeEntity> allNodes = new List<NodeEntity>();
+        private List<LineEntity> allLines = new List<LineEntity>();
 
         private double maxCoordX = 0;
         private double minCoordX = Double.MaxValue;
         private double maxCoordY = 0;
         private double minCoordY = Double.MaxValue;
+
+        private Dictionary<long, PowerEntity> allPowerEntities = new Dictionary<long, PowerEntity>();
 
         public MainWindow()
         {
@@ -59,6 +63,130 @@ namespace pr129_2016_Slavko_Lukic_pz2
             DrawAllSubstations();
             DrawAllSwitches();
             DrawAllNodes();
+
+            ParseLines();
+            DrawAllLines();
+        }
+
+        private void DrawAllLines()
+        {
+            double yOffset = 800 / y;
+            double xOffset = 1000 / x;
+
+            foreach (var le in allLines)
+            {
+                double firstX = -1;
+                double firstY = -1;
+                double secondX = -1;
+                double secondY = -1;
+                string ttp = "";
+
+                foreach (var pe in allPowerEntities)
+                {
+                    if (pe.Key == le.FirstEnd)
+                    {
+                        firstX = pe.Value.X;
+                        firstY = pe.Value.Y;
+                    }
+                    if (pe.Key == le.SecondEnd)
+                    {
+                        secondX = pe.Value.X;
+                        secondY = pe.Value.Y;
+                    }
+                }
+
+                if (firstX < 0 || firstY < 0 || secondX < 0 || secondY < 0)
+                    continue;
+
+                ttp = firstX.ToString() + firstY.ToString() + "|" + secondX.ToString() + secondY.ToString();
+
+                Line line1 = new Line();
+                line1.StrokeThickness = 1;
+                line1.Stroke = new SolidColorBrush(Colors.MediumVioletRed);
+                line1.X1 = firstX * xOffset;
+                line1.Y1 = firstY * yOffset;
+                line1.X2 = secondX * xOffset;
+                line1.Y2 = firstY * yOffset;
+                line1.Tag = ttp;
+                line1.MouseRightButtonDown += line_MouseRightButtonDown;
+                canvas.Children.Add(line1);
+
+                Line line2 = new Line();
+                line2.StrokeThickness = 1;
+                line2.Stroke = new SolidColorBrush(Colors.MediumVioletRed);
+                line2.X1 = secondX * xOffset;
+                line2.Y1 = firstY * yOffset;
+                line2.X2 = secondX * xOffset;
+                line2.Y2 = secondY * yOffset;
+                line2.Tag = ttp;
+                line2.MouseRightButtonDown += line_MouseRightButtonDown;
+                canvas.Children.Add(line2);
+            }
+        }
+
+        private void line_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var mouseWasDownOn = e.Source as FrameworkElement;
+            string[] coords = mouseWasDownOn.Tag.ToString().Split('|');
+
+            foreach (var dot in allDots)
+            {
+                if (coords[0] == dot.Key)
+                    dot.Value.Fill = new SolidColorBrush(Colors.LimeGreen);
+
+                if (coords[1] == dot.Key)
+                    dot.Value.Fill = new SolidColorBrush(Colors.LimeGreen);
+            }
+        }
+
+        private void ParseLines()
+        {
+            bool firstEndExists;
+            bool secondEndExists;
+            bool allowAddLine;
+
+            foreach (XmlNode node in lineNodeList)
+            {
+                firstEndExists = false;
+                secondEndExists = false;
+                allowAddLine = true;
+
+                LineEntity le = new LineEntity();
+
+                le.Id = long.Parse(node.SelectSingleNode("Id").InnerText);
+                le.Name = node.SelectSingleNode("Name").InnerText;
+                le.FirstEnd = long.Parse(node.SelectSingleNode("FirstEnd").InnerText);
+                le.SecondEnd = long.Parse(node.SelectSingleNode("SecondEnd").InnerText);
+
+                //provera da li postoje node-ovi za line-ove
+                foreach (var dot in allDots)
+                {
+                    if (!firstEndExists && dot.Value.ToolTip.ToString().Contains(le.FirstEnd.ToString()))
+                        firstEndExists = true;
+
+                    if (!secondEndExists && dot.Value.ToolTip.ToString().Contains(le.SecondEnd.ToString()))
+                        secondEndExists = true;
+
+                    if (firstEndExists && secondEndExists)
+                        break;
+                }
+
+                //provera da li postoji vec taj line
+                if (firstEndExists && secondEndExists)
+                {
+                    foreach (var line in allLines)
+                    {
+                        if (line.FirstEnd == le.FirstEnd && line.SecondEnd == le.SecondEnd)
+                            allowAddLine = false;
+
+                        if (line.FirstEnd == le.SecondEnd && line.SecondEnd == le.FirstEnd)
+                            allowAddLine = false;
+                    }
+                }
+
+                if (allowAddLine)
+                    allLines.Add(le);
+            }
         }
 
         private void DrawAllNodes()
@@ -70,6 +198,12 @@ namespace pr129_2016_Slavko_Lukic_pz2
 
                 int xCoord = Convert.ToInt32(XX);
                 int yCoord = Convert.ToInt32(YY);
+
+                PowerEntity pe = new PowerEntity();
+                pe.Id = ss.Id;
+                pe.X = xCoord;
+                pe.Y = yCoord;
+                allPowerEntities.Add(pe.Id, pe);
 
                 Ellipse e = new Ellipse();
                 e.Width = elipseSize;
@@ -107,6 +241,12 @@ namespace pr129_2016_Slavko_Lukic_pz2
                 int xCoord = Convert.ToInt32(XX);
                 int yCoord = Convert.ToInt32(YY);
 
+                PowerEntity pe = new PowerEntity();
+                pe.Id = ss.Id;
+                pe.X = xCoord;
+                pe.Y = yCoord;
+                allPowerEntities.Add(pe.Id, pe);
+
                 Ellipse e = new Ellipse();
                 e.Width = elipseSize;
                 e.Height = elipseSize;
@@ -142,6 +282,12 @@ namespace pr129_2016_Slavko_Lukic_pz2
 
                 int xCoord = Convert.ToInt32(XX);
                 int yCoord = Convert.ToInt32(YY);
+
+                PowerEntity pe = new PowerEntity();
+                pe.Id = ss.Id;
+                pe.X = xCoord;
+                pe.Y = yCoord;
+                allPowerEntities.Add(pe.Id, pe);
 
                 Ellipse e = new Ellipse();
                 e.Width = elipseSize;
@@ -267,6 +413,7 @@ namespace pr129_2016_Slavko_Lukic_pz2
             substationNodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Substations/SubstationEntity");
             nodeNodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Nodes/NodeEntity");
             switchNodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Switches/SwitchEntity");
+            lineNodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Lines/LineEntity");
         }
 
         private void DrawGrid(double x, double y)
