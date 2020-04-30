@@ -51,8 +51,8 @@ namespace pr129_2016_Slavko_Lukic_pz2
 
         private Dictionary<long, PowerEntity> allPowerEntities = new Dictionary<long, PowerEntity>();
 
-        private List<Line> lns = new List<Line>();
-        private List<Point> pts = new List<Point>();
+        private List<Line> allDrawnLineObjects = new List<Line>();
+        private List<Point> allIntersections = new List<Point>();
 
         public MainWindow()
         {
@@ -71,31 +71,37 @@ namespace pr129_2016_Slavko_Lukic_pz2
             ParseLines();
             DrawAllLines();
 
-            foreach (var a in lns)
+            FindAllIntersections();
+            DrawAllIntersections();
+        }
+
+        private void DrawAllIntersections()
+        {
+            foreach (var a in allIntersections)
             {
-                foreach (var b in lns)
+                Rectangle r = new Rectangle();
+                r.Width = 1;
+                r.Height = 1;
+                r.Fill = new SolidColorBrush(Colors.GreenYellow);
+
+                Canvas.SetLeft(r, a.X - 0.5);
+                Canvas.SetTop(r, a.Y - 0.5);
+
+                canvas.Children.Add(r);
+            }
+        }
+
+        private void FindAllIntersections()
+        {
+            foreach (var a in allDrawnLineObjects)
+            {
+                foreach (var b in allDrawnLineObjects)
                 {
                     Point ix = FindIntersection(a, b);
                     //Point ix = FindLineIntersection(a, b);
                     if (ix != null)
-                        pts.Add(ix);
+                        allIntersections.Add(ix);
                 }
-            }
-
-            foreach (var a in pts)
-            {
-                double yOffset = 800 / y;
-                double xOffset = 1000 / x;
-
-                Rectangle e = new Rectangle();
-                e.Width = 1;
-                e.Height = 1;
-                e.Fill = new SolidColorBrush(Colors.YellowGreen);
-
-                Canvas.SetLeft(e, a.X - 0.5);
-                Canvas.SetTop(e, a.Y - 0.5);
-
-                canvas.Children.Add(e);
             }
         }
 
@@ -146,7 +152,7 @@ namespace pr129_2016_Slavko_Lukic_pz2
             return retVal;
         }
 
-        private static Point FindIntersection(Line lineA, Line lineB, double tolerance = 0.001)
+        private Point FindIntersection(Line lineA, Line lineB, double tolerance = 0.001)
         {
             double x1 = lineA.X1, y1 = lineA.Y1;
             double x2 = lineA.X2, y2 = lineA.Y2;
@@ -260,7 +266,7 @@ namespace pr129_2016_Slavko_Lukic_pz2
             return default(Point);
         }
 
-        private static bool IsInsideLine(Line line, double x, double y)
+        private bool IsInsideLine(Line line, double x, double y)
         {
             return (x >= line.X1 && x <= line.X2
                         || x >= line.X2 && x <= line.X1)
@@ -279,7 +285,8 @@ namespace pr129_2016_Slavko_Lukic_pz2
                 double firstY = -1;
                 double secondX = -1;
                 double secondY = -1;
-                string ttp = "";
+                string tag = "";
+                string tooltip = "";
 
                 foreach (var pe in allPowerEntities)
                 {
@@ -298,7 +305,8 @@ namespace pr129_2016_Slavko_Lukic_pz2
                 if (firstX < 0 || firstY < 0 || secondX < 0 || secondY < 0)
                     continue;
 
-                ttp = firstX.ToString() + firstY.ToString() + "|" + secondX.ToString() + secondY.ToString();
+                tag = firstX.ToString() + firstY.ToString() + "|" + secondX.ToString() + secondY.ToString();
+                tooltip = "LINE | id: " + le.Id + ", name: " + le.Name;
 
                 Line line1 = new Line();
                 line1.StrokeThickness = 1;
@@ -307,10 +315,12 @@ namespace pr129_2016_Slavko_Lukic_pz2
                 line1.Y1 = firstY * yOffset;
                 line1.X2 = secondX * xOffset;
                 line1.Y2 = firstY * yOffset;
-                line1.Tag = ttp;
+                line1.Tag = tag;
+                line1.ToolTip = tooltip;
                 line1.MouseRightButtonDown += line_MouseRightButtonDown;
+
                 canvas.Children.Add(line1);
-                lns.Add(line1);
+                allDrawnLineObjects.Add(line1);
 
                 Line line2 = new Line();
                 line2.StrokeThickness = 1;
@@ -319,10 +329,12 @@ namespace pr129_2016_Slavko_Lukic_pz2
                 line2.Y1 = firstY * yOffset;
                 line2.X2 = secondX * xOffset;
                 line2.Y2 = secondY * yOffset;
-                line2.Tag = ttp;
+                line2.Tag = tag;
+                line2.ToolTip = tooltip;
                 line2.MouseRightButtonDown += line_MouseRightButtonDown;
+
                 canvas.Children.Add(line2);
-                lns.Add(line2);
+                allDrawnLineObjects.Add(line2);
             }
         }
 
@@ -632,6 +644,7 @@ namespace pr129_2016_Slavko_Lukic_pz2
             {
                 Line line = new Line();
                 line.StrokeThickness = 0.2;
+                line.Opacity = 0.4;
                 line.Stroke = new SolidColorBrush(Colors.DimGray);
                 line.X1 = 0;
                 line.X2 = 1000;
@@ -651,6 +664,7 @@ namespace pr129_2016_Slavko_Lukic_pz2
             {
                 Line line = new Line();
                 line.StrokeThickness = 0.2;
+                line.Opacity = 0.4;
                 line.Stroke = new SolidColorBrush(Colors.DimGray);
                 line.X1 = offset * i;
                 line.X2 = offset * i;
